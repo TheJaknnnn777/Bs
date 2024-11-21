@@ -24,28 +24,30 @@ def send_telegram_message(message):
         print(f"Gagal mengirim pesan ke Telegram. Status code: {response.status_code}, response: {response.text}")
 
 def get_proxies():
-    proxy_url = "https://www.proxynova.com/proxy-server-list/"
-    response = requests.get(proxy_url)
-    soup = BeautifulSoup(response.text, 'html.parser')
     proxies = []
 
-    for row in soup.find_all('tr'):
-        columns = row.find_all('td')
-        if len(columns) > 1:
-            ip = columns[0].get_text(strip=True)
-            port = columns[1].get_text(strip=True)
-            if ip and port:
-                proxy = f"http://{ip}:{port}"
-                proxies.append(proxy)
+    # Get SOCKS4 proxies from the given URL
+    try:
+        proxy_url = "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/socks4/socks4.txt"
+        response = requests.get(proxy_url)
+        proxies = [f"socks4://{proxy.strip()}" for proxy in response.text.split('\n') if proxy.strip()]
+    except Exception as e:
+        print(f"Failed to fetch proxies from the provided URL: {e}")
 
     return proxies
 
 def get_random_proxy(proxies):
-    return {"http": random.choice(proxies)}
+    if not proxies:
+        raise Exception("Proxy list is empty!")
+    return {"http": random.choice(proxies), "https": random.choice(proxies)}
 
 def google_search_dork(query, num_pages=15):
     results = []
     proxies = get_proxies()
+    if not proxies:
+        print("No proxies available. Exiting.")
+        return results
+    
     for page in range(num_pages):
         headers = {"User-Agent": random.choice(USER_AGENTS)}
         proxy = get_random_proxy(proxies)
@@ -101,3 +103,4 @@ if __name__ == "__main__":
 
         # Jeda 3 menit sebelum melanjutkan ke dork berikutnya
         time.sleep(3 * 60)
+                
