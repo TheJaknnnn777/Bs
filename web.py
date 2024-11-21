@@ -24,9 +24,20 @@ def send_telegram_message(message):
         print(f"Gagal mengirim pesan ke Telegram. Status code: {response.status_code}, response: {response.text}")
 
 def get_proxies():
-    proxy_url = "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/http.txt"
+    proxy_url = "https://www.proxynova.com/proxy-server-list/"
     response = requests.get(proxy_url)
-    proxies = [proxy for proxy in response.text.split("\n") if proxy]
+    soup = BeautifulSoup(response.text, 'html.parser')
+    proxies = []
+
+    for row in soup.find_all('tr'):
+        columns = row.find_all('td')
+        if len(columns) > 1:
+            ip = columns[0].get_text(strip=True)
+            port = columns[1].get_text(strip=True)
+            if ip and port:
+                proxy = f"http://{ip}:{port}"
+                proxies.append(proxy)
+
     return proxies
 
 def get_random_proxy(proxies):
