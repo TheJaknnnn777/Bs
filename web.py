@@ -29,18 +29,26 @@ def get_proxies():
     proxies = [proxy for proxy in response.text.split("\n") if proxy]
     return proxies
 
+def get_random_proxy(proxies):
+    return {"http": random.choice(proxies)}
+
 def google_search_dork(query, num_pages=15):
     results = []
     proxies = get_proxies()
     for page in range(num_pages):
         headers = {"User-Agent": random.choice(USER_AGENTS)}
-        proxy = {"http": random.choice(proxies)}
+        proxy = get_random_proxy(proxies)
         start = page * 10
         search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}&start={start}"
 
         try:
             response = requests.get(search_url, headers=headers, proxies=proxy, timeout=15)
-            if response.status_code != 200:
+            if response.status_code == 429:
+                print(f"Too Many Requests. Waiting before retrying with a new proxy...")
+                time.sleep(random.uniform(30, 60))  # Penundaan lebih lama
+                proxy = get_random_proxy(proxies)
+                continue
+            elif response.status_code != 200:
                 print(f"Failed to fetch Google results on page {page + 1}. Status code: {response.status_code}")
                 continue
 
@@ -62,7 +70,7 @@ def google_search_dork(query, num_pages=15):
             print(f"Error on page {page + 1}: {e}")
 
         # Tambahkan jeda yang lebih lama untuk menghindari deteksi bot
-        time.sleep(random.uniform(15, 20))
+        time.sleep(random.uniform(30, 60))
 
     return results
 
@@ -82,4 +90,3 @@ if __name__ == "__main__":
 
         # Jeda 3 menit sebelum melanjutkan ke dork berikutnya
         time.sleep(3 * 60)
-        
