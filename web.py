@@ -24,7 +24,7 @@ def send_telegram_message(message):
     if response.status_code == 200:
         print("Pesan berhasil dikirim ke Telegram.")
     else:
-        print(f"Gagal mengirim pesan ke Telegram. Status code: {response.status_code}")
+        print(f"Gagal mengirim pesan ke Telegram. Status code: {response.status_code}, response: {response.text}")
 
 # Fungsi pencarian Google tanpa proxy
 def google_search_dork(query, num_pages=5):
@@ -72,5 +72,7 @@ if __name__ == "__main__":
         # Gabungkan hasil menjadi satu string
         result_text = "\n".join(search_results)
         # Kirim hasil ke bot Telegram
-        send_telegram_message(result_text)
-        
+        # Bagi pesan jika lebih dari 4096 karakter
+        max_length = 4096
+        for i in range(0, len(result_text), max_length):
+            send_telegram_message(result_text[i:i + max_length])
