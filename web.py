@@ -34,6 +34,24 @@ def get_proxies():
     except Exception as e:
         print(f"Failed to fetch proxies from the provided URL: {e}")
 
+    # SSLProxies as backup
+    if not proxies:
+        try:
+            backup_proxy_url = "https://www.sslproxies.org/"
+            response = requests.get(backup_proxy_url)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            for row in soup.find_all('tr'):
+                columns = row.find_all('td')
+                if len(columns) > 1:
+                    ip = columns[0].get_text(strip=True)
+                    port = columns[1].get_text(strip=True)
+                    if ip and port:
+                        proxy = f"http://{ip}:{port}"
+                        proxies.append(proxy)
+        except Exception as e:
+            print(f"Failed to fetch proxies from SSLProxies: {e}")
+
     return proxies
 
 def get_random_proxy(proxies):
@@ -55,7 +73,7 @@ def google_search_dork(query, num_pages=15):
         search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}&start={start}"
 
         try:
-            response = requests.get(search_url, headers=headers, proxies=proxy, timeout=15)
+            response = requests.get(search_url, headers=headers, proxies=proxy, timeout=30)  # Tingkatkan timeout menjadi 30 detik
             if response.status_code == 429:
                 print(f"Too Many Requests. Waiting before retrying with a new proxy...")
                 time.sleep(random.uniform(30, 60))  # Penundaan lebih lama
@@ -103,4 +121,4 @@ if __name__ == "__main__":
 
         # Jeda 3 menit sebelum melanjutkan ke dork berikutnya
         time.sleep(3 * 60)
-                
+    
