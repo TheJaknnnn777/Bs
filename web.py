@@ -3,12 +3,20 @@ from bs4 import BeautifulSoup
 import urllib.parse
 import random
 import time
+import os
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15A372 Safari/604.1"
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15A372 Safari/604.1",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/89.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:85.0) Gecko/20100101 Firefox/85.0",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:35.0) Gecko/20100101 Firefox/35.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:85.0) Gecko/20100101 Firefox/85.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0",
+    "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/602.3.12 (KHTML, like Gecko) Version/10.0.3 Safari/602.3.12"
 ]
 
 TELEGRAM_TOKEN = "8173488085:AAHeEmVQNc1E5fVA4fptgvtrBEMBXBVcGmY"
@@ -23,61 +31,19 @@ def send_telegram_message(message):
     else:
         print(f"Gagal mengirim pesan ke Telegram. Status code: {response.status_code}, response: {response.text}")
 
-def get_proxies():
-    proxies = []
-
-    # Get SOCKS4 proxies from the given URL
-    try:
-        proxy_url = "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/socks4/socks4.txt"
-        response = requests.get(proxy_url)
-        proxies = [f"socks4://{proxy.strip()}" for proxy in response.text.split('\n') if proxy.strip()]
-    except Exception as e:
-        print(f"Failed to fetch proxies from the provided URL: {e}")
-
-    # SSLProxies as backup
-    if not proxies:
-        try:
-            backup_proxy_url = "https://www.sslproxies.org/"
-            response = requests.get(backup_proxy_url)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            for row in soup.find_all('tr'):
-                columns = row.find_all('td')
-                if len(columns) > 1:
-                    ip = columns[0].get_text(strip=True)
-                    port = columns[1].get_text(strip=True)
-                    if ip and port:
-                        proxy = f"http://{ip}:{port}"
-                        proxies.append(proxy)
-        except Exception as e:
-            print(f"Failed to fetch proxies from SSLProxies: {e}")
-
-    return proxies
-
-def get_random_proxy(proxies):
-    if not proxies:
-        raise Exception("Proxy list is empty!")
-    return {"http": random.choice(proxies), "https": random.choice(proxies)}
-
 def google_search_dork(query, num_pages=15):
     results = []
-    proxies = get_proxies()
-    if not proxies:
-        print("No proxies available. Exiting.")
-        return results
     
     for page in range(num_pages):
         headers = {"User-Agent": random.choice(USER_AGENTS)}
-        proxy = get_random_proxy(proxies)
         start = page * 10
         search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}&start={start}"
 
         try:
-            response = requests.get(search_url, headers=headers, proxies=proxy, timeout=30)  # Tingkatkan timeout menjadi 30 detik
+            response = requests.get(search_url, headers=headers, timeout=30, verify=False)
             if response.status_code == 429:
-                print(f"Too Many Requests. Waiting before retrying with a new proxy...")
-                time.sleep(random.uniform(30, 60))  # Penundaan lebih lama
-                proxy = get_random_proxy(proxies)
+                print(f"Too Many Requests. Waiting before retrying...")
+                time.sleep(random.uniform(60, 120))  # Penundaan lebih lama
                 continue
             elif response.status_code != 200:
                 print(f"Failed to fetch Google results on page {page + 1}. Status code: {response.status_code}")
@@ -100,10 +66,18 @@ def google_search_dork(query, num_pages=15):
         except Exception as e:
             print(f"Error on page {page + 1}: {e}")
 
-        # Tambahkan jeda yang lebih lama untuk menghindari deteksi bot
-        time.sleep(random.uniform(30, 60))
+        # Tambahkan jeda yang lebih lama dan acak untuk menghindari deteksi bot
+        time.sleep(random.uniform(60, 120))
 
     return results
+
+def remove_line_from_file(file_name, line_to_remove):
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+    with open(file_name, "w") as f:
+        for line in lines:
+            if line.strip("\n") != line_to_remove:
+                f.write(line)
 
 if __name__ == "__main__":
     with open('dork.txt', 'r') as file:
@@ -119,6 +93,9 @@ if __name__ == "__main__":
 
         print(f"Total hasil yang diambil untuk dork '{dork_query}': {len(search_results)}.")
 
-        # Jeda 3 menit sebelum melanjutkan ke dork berikutnya
-        time.sleep(3 * 60)
-    
+        # Hapus baris yang telah diproses dari dork.txt
+        remove_line_from_file('dork.txt', dork_query)
+
+        # Jeda lebih lama sebelum melanjutkan ke dork berikutnya
+        time.sleep(random.uniform(60, 120))
+        
